@@ -1,0 +1,261 @@
+# Parent types for the systems software teams work in: where issues are tracked, where code is
+# changed and reviewed, where it is built. Nothing here fetches anything. A realm over a real
+# product makes its own types CHILDREN of these:
+#
+#   - name: GitHubIssue
+#     parents: [Issue]
+#
+# and from then on a GitHubIssue IS an Issue — the label is on the node, and the properties below
+# are its properties. A view written against Issue never learns which tracker answered it.
+# `MATCH (i:GitHub:Issue)` still asks one product only.
+#
+# THE CONTRACT A CHILD SIGNS. Inheriting the names is not enough; a child must also mean the same
+# thing by them, or a view that reads the parent gets confident nonsense:
+#
+#   repositoryKey  the repository as `<host>/<owner>/<name>`, lower case: "github.com/acme/shop",
+#                  "gitlab.com/acme/platform/shop". It is the one identifier every forge can
+#                  produce and none invented, and it is what joins an issue to the change request
+#                  that closed it, the commit to the build that ran it, and all of them to the
+#                  source the code realms read at a commit. A tracker with no repository (Jira)
+#                  leaves it empty and fills `projectKey` instead.
+#   key            a record's own key, unique across every installed tracker: for a forge,
+#                  `<repositoryKey>#<number>` ("github.com/acme/shop#123"); for a tracker with
+#                  its own keys, that key as written ("SHOP-123"). It is what a Comment or a
+#                  Review names as its `subjectKey`, and what a ChangeRequest lists in
+#                  `issueKeys`. Never a numeric id: two products' ids must never be compared.
+#   authorKind     who, or what, wrote the record — the question this vocabulary exists to ask.
+#                  Exactly one of:
+#                    human     an account the source knows to be a person
+#                    bot       an account the source marks as a machine (GitHub's `Bot` type, a
+#                              `[bot]` login, an app acting under its own identity): Dependabot,
+#                              Renovate, a CI commenter
+#                    agent     a coding agent acting under its OWN identity — a login that names
+#                              one (copilot, claude, devin, codex, cursor, aider, jules, sweep —
+#                              each child keeps the list it matches against)
+#                    assisted  a person's record that declares an agent's hand: a commit with a
+#                              Co-Authored-By trailer naming an agent, a pull request whose
+#                              description says an agent generated it
+#                    unknown   the source does not say
+#                  The honest limit, which a view over this must repeat: a person who pastes an
+#                  agent's text with no trailer and no marker is `human` here. The field reports
+#                  what the record declares, never a guess about its prose.
+#   authorRole     the author's standing in the repository, as the forge records it at the time:
+#                  owner, member, collaborator, contributor, first-timer, outsider; empty where
+#                  the source has no such notion. Separates the inside of a project from the
+#                  outside, which is the other axis every "who" question has.
+#   timestamps     ISO-8601 text in UTC with the time ("2026-11-05T09:30:00Z"), never a bare
+#                  date: time-to-first-review is measured in hours. They are the EVENT's time
+#                  as the source records it — when the issue was opened, when the review was
+#                  submitted — not when some import saw it.
+#   enumerations   exactly the words listed, lower case, hyphenated. A source with more states
+#                  folds them in (a GitLab "locked" issue is `closed`); the source's own word
+#                  travels in a property of the child's own.
+#   counts         integers; empty where the source's LIST endpoint does not carry them, never
+#                  zero in that case — zero is an answer.
+#   sourceUrl      a link that opens THIS record in the product it lives in. It is what lets an
+#                  app that has never heard of the product send the user back to it.
+#
+# RECORDS, NOT IDENTITIES. Every type here is a parent type: a record a product holds, and two
+# products' records are two records. A parent has no identity of its own, because only the
+# product knows what makes its records unique. The join keys above (`repositoryKey`, `key`,
+# `projectKey`) are properties that happen to agree across products, which is all a cross-realm
+# join needs (realm-spec VIRTUAL_CYPHER.md §5.4.2: a record is a parent label; an identity is a
+# spine). There is deliberately no spine here yet: a Repository on GitHub and its mirror on
+# GitLab are, for every question asked so far, two things.
+
+- name: Repository
+  userAnchor: false
+  description: >-
+    A repository of source code on a forge, as that forge knows it. Where change requests,
+    commits and builds live, and where a forge keeps its issues. A tracker with no code (Jira)
+    has none.
+  properties:
+    key: "`<host>/<owner>/<name>`, lower case: the value every other type here carries as repositoryKey."
+    host: "The forge's host, lower case: github.com, gitlab.com, bitbucket.org, or a self-hosted name."
+    owner: "The owner or group path, as the forge spells it."
+    name: "The repository name, as the forge spells it."
+    defaultBranch: "The branch a change request is merged into by default."
+    visibility: "public, private or internal."
+    sourceUrl: "Opens the repository on its forge."
+
+- name: Issue
+  userAnchor: false
+  description: >-
+    One tracked unit of work: a bug, a feature, a task, a question — an issue on a forge, an
+    issue or ticket in a tracker. Not a change to the code: that is a ChangeRequest, even on a
+    forge that lists both together. It is the thing somebody is waiting on; who raised it,
+    who it is assigned to, and when it closed are what every question about it starts from.
+  properties:
+    key: "The issue's key, unique across trackers: `<repositoryKey>#<number>` on a forge, or the tracker's own key such as SHOP-123."
+    repositoryKey: "The repository the issue belongs to, lower case. Empty for a tracker with no repository."
+    projectKey: "The tracker's project, where it has one: a Jira project key. Empty on a forge."
+    number: "The issue's number or key as a person would type it: 123, or SHOP-123."
+    title: "One line saying what the issue is."
+    body: "The issue's description, as text. Empty when none was written."
+    status: "open or closed. A tracker with more states folds them in: in-progress is open, done and won't-fix are closed."
+    resolution: "Why it closed, where the tracker says: completed, not-planned, duplicate. Empty while open or when the tracker does not say."
+    kind: "bug, feature, task, question, documentation or other, where the tracker records it (a label, an issue type). Empty when it does not."
+    priority: "urgent, high, medium, low or none, where the tracker records one. Empty when it does not."
+    labels: { cardinality: LIST, description: "The tracker's labels on the issue, as written." }
+    milestone: "The milestone, sprint or version it is planned for, as written. Empty when none."
+    authorLogin: "The login of whoever raised it, as the tracker spells it."
+    authorKind: "human, bot, agent, assisted or unknown — see the contract."
+    authorRole: "owner, member, collaborator, contributor, first-timer or outsider; empty where the tracker has no such notion."
+    assigneeLogins: { cardinality: LIST, description: "Logins of everyone it is assigned to. Empty when unassigned." }
+    isChangeRequest: { type: boolean, description: "True when the forge lists a change request among its issues, as GitHub's issue list does; a view that wants issues alone filters it out. A tracker that keeps them apart always says false." }
+    openedAt: "When it was raised."
+    updatedAt: "When anything last happened to it."
+    closedAt: "When it was closed; empty while open."
+    commentCount: { type: int, description: "Comments on it. A long thread on an open issue is a signal in itself." }
+    sourceUrl: "Opens this issue in its tracker."
+
+- name: ChangeRequest
+  userAnchor: false
+  description: >-
+    A proposed change to a repository's code, open for review and merge — a pull request on
+    GitHub or Bitbucket, a merge request on GitLab. The unit at which code is reviewed, and so
+    the unit at which human and machine authorship, review burden and time-to-merge are
+    measured.
+  properties:
+    key: "`<repositoryKey>#<number>`."
+    repositoryKey: "The repository the change is proposed to, lower case."
+    number: "The change request's number as a person would type it."
+    title: "One line saying what the change is."
+    body: "The description, as text. Empty when none was written."
+    status: "open, merged or closed. Closed means closed without merging."
+    draft: { type: boolean, description: "True while marked not ready for review." }
+    authorLogin: "The login of whoever opened it."
+    authorKind: "human, bot, agent, assisted or unknown — see the contract."
+    authorRole: "owner, member, collaborator, contributor, first-timer or outsider; empty where the forge has no such notion."
+    baseBranch: "The branch it would merge into."
+    headBranch: "The branch it was proposed from."
+    headSha: "The commit at its head, as last seen."
+    mergeSha: "The commit the merge produced; empty unless merged."
+    mergedByLogin: "Who merged it; empty unless merged."
+    labels: { cardinality: LIST, description: "Labels on it, as written." }
+    milestone: "The milestone or version it is planned for. Empty when none."
+    assigneeLogins: { cardinality: LIST, description: "Logins of everyone it is assigned to." }
+    reviewerLogins: { cardinality: LIST, description: "Logins whose review is requested and still outstanding." }
+    issueKeys: { cardinality: LIST, description: "Keys of issues it says it resolves, in this vocabulary's key form. Empty when it names none." }
+    openedAt: "When it was opened."
+    updatedAt: "When anything last happened to it."
+    mergedAt: "When it was merged; empty unless merged."
+    closedAt: "When it was closed or merged; empty while open."
+    commentCount: { type: int, description: "Conversation comments on it, not review comments. Empty where the source's list does not carry it." }
+    additions: { type: int, description: "Lines added across the change. Empty where the source's list does not carry it." }
+    deletions: { type: int, description: "Lines deleted across the change. Empty where the source's list does not carry it." }
+    filesChanged: { type: int, description: "Files the change touches. Empty where the source's list does not carry it." }
+    sourceUrl: "Opens this change request on its forge."
+
+- name: Comment
+  userAnchor: false
+  description: >-
+    One thing somebody said on an issue, a change request or a commit. Who said it matters more
+    than anything else about it: the share of comments that a machine wrote, and who it was
+    talking to, are the questions.
+  properties:
+    subjectKey: "The key of what it was said on: an Issue's or ChangeRequest's `key`, or a Commit's `<repositoryKey>@<sha>`."
+    subjectKind: "issue, change-request or commit."
+    repositoryKey: "The repository, lower case. Empty for a tracker with no repository."
+    kind: "conversation for a comment on the thread, review-line for one attached to a line of the diff, commit for one on a commit."
+    body: "The comment, as text."
+    authorLogin: "Who wrote it."
+    authorKind: "human, bot, agent, assisted or unknown — see the contract."
+    authorRole: "owner, member, collaborator, contributor, first-timer or outsider; empty where the source has no such notion."
+    path: "For a review-line comment, the file it is on. Empty otherwise."
+    line: { type: int, description: "For a review-line comment, the line it is on, in the file after the change. Empty otherwise." }
+    inReplyTo: "For a reply, the `sourceUrl` of the comment it answers. Empty for a top-level comment."
+    createdAt: "When it was posted."
+    updatedAt: "When it was last edited."
+    sourceUrl: "Opens this comment where it was said."
+
+- name: Review
+  userAnchor: false
+  description: >-
+    A verdict on a change request: approved, changes requested, or a comment-only pass. One
+    per submission; a reviewer who looks twice leaves two.
+  properties:
+    subjectKey: "The ChangeRequest's `key`."
+    repositoryKey: "The repository, lower case."
+    verdict: "approved, changes-requested, commented, dismissed or pending."
+    body: "The review's summary text. Empty when none was written."
+    authorLogin: "Who reviewed."
+    authorKind: "human, bot, agent, assisted or unknown — see the contract."
+    authorRole: "owner, member, collaborator, contributor, first-timer or outsider; empty where the source has no such notion."
+    commitSha: "The head commit the review was of."
+    submittedAt: "When it was submitted."
+    sourceUrl: "Opens this review on its forge."
+
+- name: Commit
+  userAnchor: false
+  description: >-
+    One commit in a repository: a message, an author, a parent or two, and what it changed. The
+    unit at which code actually moves, and so the unit at which size, authorship and what broke
+    the build meet. Its `projectKey` is what the code realms pin a project by, so a commit reaches
+    the source it produced, parsed at that very commit.
+  properties:
+    repositoryKey: "The repository, lower case."
+    sha: "The commit's full hash."
+    key: "`<repositoryKey>@<sha>`: what a Comment names as its subjectKey."
+    projectKey: "`https://<host>/<owner>/<name>@<sha>` — the project key the code realms (realm-java-project and its siblings) read a repository by, at this commit."
+    title: "The first line of the message."
+    message: "The whole message, trailers included."
+    authorLogin: "The forge login of the author, where the forge resolved one. Empty when it could not."
+    authorName: "The author's name as the commit records it."
+    authorKind: "human, bot, agent, assisted or unknown — see the contract. `assisted` is the common case for agent-written code committed under a person's name: the Co-Authored-By trailer is what says so."
+    coAuthors: { cardinality: LIST, description: "Co-Authored-By trailers, as written: `Name <email>`. Empty when none." }
+    committerLogin: "The forge login of the committer, where it differs from the author and the forge resolved it (a web merge, a rebase by someone else). Empty otherwise."
+    authoredAt: "When it was authored."
+    committedAt: "When it was committed; differs from authoredAt after a rebase or cherry-pick."
+    parents: { cardinality: LIST, description: "Shas of the parent commits." }
+    isMerge: { type: boolean, description: "True when it has more than one parent." }
+    isRevert: { type: boolean, description: "True when the message declares it reverts another commit." }
+    revertsSha: "The sha the message says it reverts; empty unless isRevert."
+    verified: { type: boolean, description: "True when the forge verified the signature. Empty when the forge does not say." }
+    additions: { type: int, description: "Lines added. Empty where the source's list does not carry it." }
+    deletions: { type: int, description: "Lines deleted. Empty where the source's list does not carry it." }
+    filesChanged: { type: int, description: "Files touched. Empty where the source's list does not carry it." }
+    sourceUrl: "Opens this commit on its forge."
+
+- name: FileChange
+  userAnchor: false
+  description: >-
+    One file as one commit or one change request changed it: its path, what happened to it,
+    and how much moved. A node per file rather than lists on the commit, so that "which files
+    change most" and "which files were in the commits that broke the build" are a GROUP BY.
+  properties:
+    subjectKey: "The key of the Commit (`<repositoryKey>@<sha>`) or ChangeRequest (`<repositoryKey>#<number>`) this change belongs to."
+    subjectKind: "commit or change-request."
+    repositoryKey: "The repository, lower case."
+    path: "The file's path after the change, from the repository root."
+    previousPath: "The path before a rename or copy; empty otherwise."
+    status: "added, modified, removed, renamed or copied."
+    additions: { type: int, description: "Lines added in this file." }
+    deletions: { type: int, description: "Lines deleted in this file." }
+    changedLines: { cardinality: LIST, description: "Line ranges in the file AFTER the change, as `from-to` text, one per hunk — what a declaration's extent is intersected with to say which method changed. Empty when the source gave no patch." }
+    sourceUrl: "Opens the diff of this file."
+
+- name: Build
+  userAnchor: false
+  description: >-
+    One run of a build or pipeline against a commit: what triggered it, what it ran for, and
+    how it ended. A workflow run on GitHub Actions, a pipeline on GitLab or Bitbucket, a job
+    run on Jenkins. Joined to the Commit it built by `sha` and to the ChangeRequest it checked
+    by `changeRequestKeys`, it is how "who broke the build" is answered.
+  properties:
+    repositoryKey: "The repository, lower case."
+    name: "The build's name as the CI system shows it: the workflow or pipeline name."
+    number: { type: int, description: "The build's number within its name, where the CI system numbers them." }
+    attempt: { type: int, description: "Which attempt this is of the same build, from 1. Empty where the CI system does not retry in place." }
+    status: "queued, running or completed."
+    conclusion: "success, failure, cancelled, skipped, timed-out or other. Empty until completed."
+    trigger: "push, change-request, schedule, manual, tag or other."
+    branch: "The branch it ran for."
+    sha: "The commit it built."
+    changeRequestKeys: { cardinality: LIST, description: "Keys of the change requests it checked. Empty for a push or a schedule." }
+    actorLogin: "Whose action triggered it."
+    actorKind: "human, bot, agent, assisted or unknown — for the actor, under the contract's rules for authorKind."
+    queuedAt: "When it was requested."
+    startedAt: "When it began executing."
+    finishedAt: "When it ended; empty until completed."
+    sourceUrl: "Opens this build in its CI system."
