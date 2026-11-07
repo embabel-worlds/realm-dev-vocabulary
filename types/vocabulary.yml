@@ -92,14 +92,14 @@
     number: "The issue's number or key as a person would type it: 123, or SHOP-123."
     title: "One line saying what the issue is."
     body: "The issue's description, as text. Empty when none was written."
-    status: "open or closed. A tracker with more states folds them in: in-progress is open, done and won't-fix are closed."
+    status: { type: string, description: "open or closed. A tracker with more states folds them in: in-progress is open, done and won't-fix are closed.", values: [open, closed] }
     resolution: "Why it closed, where the tracker says: completed, not-planned, duplicate. Empty while open or when the tracker does not say."
     kind: "bug, feature, task, question, documentation or other, where the tracker records it (a label, an issue type). Empty when it does not."
     priority: "urgent, high, medium, low or none, where the tracker records one. Empty when it does not."
     labels: { cardinality: LIST, description: "The tracker's labels on the issue, as written." }
     milestone: "The milestone, sprint or version it is planned for, as written. Empty when none."
     authorLogin: "The login of whoever raised it, as the tracker spells it."
-    authorKind: "human, bot, agent, assisted or unknown — see the contract."
+    authorKind: { type: string, description: "human, bot, agent, assisted or unknown — see the contract.", values: [human, bot, agent, assisted, unknown] }
     authorRole: "owner, member, collaborator, contributor, first-timer or outsider; empty where the tracker has no such notion."
     assigneeLogins: { cardinality: LIST, description: "Logins of everyone it is assigned to. Empty when unassigned." }
     isChangeRequest: { type: boolean, description: "True when the forge lists a change request among its issues, as GitHub's issue list does; a view that wants issues alone filters it out. A tracker that keeps them apart always says false." }
@@ -122,10 +122,10 @@
     number: "The change request's number as a person would type it."
     title: "One line saying what the change is."
     body: "The description, as text. Empty when none was written."
-    status: "open, merged or closed. Closed means closed without merging."
+    status: { type: string, description: "open, merged or closed. Closed means closed without merging.", values: [open, merged, closed] }
     draft: { type: boolean, description: "True while marked not ready for review." }
     authorLogin: "The login of whoever opened it."
-    authorKind: "human, bot, agent, assisted or unknown — see the contract."
+    authorKind: { type: string, description: "human, bot, agent, assisted or unknown — see the contract.", values: [human, bot, agent, assisted, unknown] }
     authorRole: "owner, member, collaborator, contributor, first-timer or outsider; empty where the forge has no such notion."
     baseBranch: "The branch it would merge into."
     headBranch: "The branch it was proposed from."
@@ -155,12 +155,12 @@
     talking to, are the questions.
   properties:
     subjectKey: "The key of what it was said on: an Issue's or ChangeRequest's `key`, or a Commit's `<repositoryKey>@<sha>`."
-    subjectKind: "issue, change-request or commit."
+    subjectKind: { type: string, description: "issue, change-request or commit.", values: [issue, change-request, commit] }
     repositoryKey: "The repository, lower case. Empty for a tracker with no repository."
-    kind: "conversation for a comment on the thread, review-line for one attached to a line of the diff, commit for one on a commit."
+    kind: { type: string, description: "conversation for a comment on the thread, review-line for one attached to a line of the diff, commit for one on a commit.", values: [conversation, review-line, commit] }
     body: "The comment, as text."
     authorLogin: "Who wrote it."
-    authorKind: "human, bot, agent, assisted or unknown — see the contract."
+    authorKind: { type: string, description: "human, bot, agent, assisted or unknown — see the contract.", values: [human, bot, agent, assisted, unknown] }
     authorRole: "owner, member, collaborator, contributor, first-timer or outsider; empty where the source has no such notion."
     path: "For a review-line comment, the file it is on. Empty otherwise."
     line: { type: int, description: "For a review-line comment, the line it is on, in the file after the change. Empty otherwise." }
@@ -177,10 +177,10 @@
   properties:
     subjectKey: "The ChangeRequest's `key`."
     repositoryKey: "The repository, lower case."
-    verdict: "approved, changes-requested, commented, dismissed or pending."
+    verdict: { type: string, description: "approved, changes-requested, commented, dismissed or pending.", values: [approved, changes-requested, commented, dismissed, pending] }
     body: "The review's summary text. Empty when none was written."
     authorLogin: "Who reviewed."
-    authorKind: "human, bot, agent, assisted or unknown — see the contract."
+    authorKind: { type: string, description: "human, bot, agent, assisted or unknown — see the contract.", values: [human, bot, agent, assisted, unknown] }
     authorRole: "owner, member, collaborator, contributor, first-timer or outsider; empty where the source has no such notion."
     commitSha: "The head commit the review was of."
     submittedAt: "When it was submitted."
@@ -202,7 +202,7 @@
     message: "The whole message, trailers included."
     authorLogin: "The forge login of the author, where the forge resolved one. Empty when it could not."
     authorName: "The author's name as the commit records it."
-    authorKind: "human, bot, agent, assisted or unknown — see the contract. `assisted` is the common case for agent-written code committed under a person's name: the Co-Authored-By trailer is what says so."
+    authorKind: { type: string, description: "human, bot, agent, assisted or unknown — see the contract. `assisted` is the common case for agent-written code committed under a person's name: the Co-Authored-By trailer is what says so.", values: [human, bot, agent, assisted, unknown] }
     coAuthors: { cardinality: LIST, description: "Co-Authored-By trailers, as written: `Name <email>`. Empty when none." }
     committerLogin: "The forge login of the committer, where it differs from the author and the forge resolved it (a web merge, a rebase by someone else). Empty otherwise."
     authoredAt: "When it was authored."
@@ -225,11 +225,11 @@
     change most" and "which files were in the commits that broke the build" are a GROUP BY.
   properties:
     subjectKey: "The key of the Commit (`<repositoryKey>@<sha>`) or ChangeRequest (`<repositoryKey>#<number>`) this change belongs to."
-    subjectKind: "commit or change-request."
+    subjectKind: { type: string, description: "commit or change-request.", values: [commit, change-request] }
     repositoryKey: "The repository, lower case."
     path: "The file's path after the change, from the repository root."
     previousPath: "The path before a rename or copy; empty otherwise."
-    status: "added, modified, removed, renamed or copied."
+    status: { type: string, description: "added, modified, removed, renamed or copied.", values: [added, modified, removed, renamed, copied] }
     additions: { type: int, description: "Lines added in this file." }
     deletions: { type: int, description: "Lines deleted in this file." }
     changedLines: { cardinality: LIST, description: "Line ranges in the file AFTER the change, as `from-to` text, one per hunk — what a declaration's extent is intersected with to say which method changed. Empty when the source gave no patch." }
@@ -247,9 +247,9 @@
     name: "The build's name as the CI system shows it: the workflow or pipeline name."
     number: { type: int, description: "The build's number within its name, where the CI system numbers them." }
     attempt: { type: int, description: "Which attempt this is of the same build, from 1. Empty where the CI system does not retry in place." }
-    status: "queued, running or completed."
+    status: { type: string, description: "queued, running or completed.", values: [queued, running, completed] }
     conclusion: "success, failure, cancelled, skipped, timed-out or other. Empty until completed."
-    trigger: "push, change-request, schedule, manual, tag or other."
+    trigger: { type: string, description: "push, change-request, schedule, manual, tag or other.", values: [push, change-request, schedule, manual, tag, other] }
     branch: "The branch it ran for."
     sha: "The commit it built."
     changeRequestKeys: { cardinality: LIST, description: "Keys of the change requests it checked. Empty for a push or a schedule." }
