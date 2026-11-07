@@ -8,7 +8,7 @@ description: >-
   is replaced. Every record says who wrote it and whether that was a person, a bot, a coding
   agent, or a person with an agent's help, so the questions nobody can answer today — what
   share of review comments are machine-written, who breaks the build — are one GROUP BY.
-version: 0.1.0
+version: 0.2.0
 # Not ready to be offered: the first child (realm-github) is being built against it.
 maturity: experimental
 author: Rod Johnson

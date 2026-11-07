@@ -86,6 +86,18 @@ joins, and uses these names so that a traversal reads the same over any product.
 | `Commit` | `CHANGED` | `FileChange` |
 | `Build` | `BUILT` | `Commit` |
 
+## Closed value domains
+
+Every enumeration in the contract is declared as a closed `values:` list on its property —
+`authorKind`, both `status`es, `subjectKind`, `kind`, `verdict`, the file change's `status`, the
+build's `status` and `trigger`. The text-to-Cypher generator is then told to use one of them
+EXACTLY, and the host refuses a generated query that compares the property with any other
+literal, so a question about "merged" change requests cannot be answered with
+`status = 'MERGED'` or `'ChangeRequest'` where `'change-request'` was meant. The properties
+that are legitimately empty (`resolution`, `kind` on an issue, `authorRole`, a build's
+`conclusion` until it completes) are described but not closed, because an empty string is a
+real value there.
+
 ## Depending on it
 
 A realm cannot yet declare that it needs another realm (embabel/me#495, #1168). Until it can:
