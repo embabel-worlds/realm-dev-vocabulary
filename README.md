@@ -63,6 +63,8 @@ It is stated in full at the top of `types/vocabulary.yml`; in short:
 | enumerations | exactly the listed words, lower case, hyphenated; a source with more states folds them in |
 | counts | integers; absent where the source's list endpoint does not carry them, never zero in that case |
 | `sourceUrl` | opens this record in its own product |
+| `kind` on a FileChange | source, test, docs, build, config, data or other, decided from the path by one ordered list of rules, so two forges answer the same kind for the same path |
+| `authorEmail` / `authorPersonEmail` on a Commit | the author's email as git recorded it; and the same value, lower case, only when the author is a person at a real mailbox — that one carries `hub: Person`, so a commit joins the world's canonical person and everything the CRM, helpdesk or directory knows about them |
 
 No parent has an identity. Identity is the child's, because only the product knows what makes
 its records unique, and two products' ids must never be compared.
@@ -84,13 +86,14 @@ joins, and uses these names so that a traversal reads the same over any product.
 | `ChangeRequest` | `HAS_COMMIT` | `Commit` |
 | `ChangeRequest` | `CHANGED` | `FileChange` |
 | `Commit` | `CHANGED` | `FileChange` |
+| `Repository` | `WRITTEN_IN` | `RepositoryLanguages` |
 | `Build` | `BUILT` | `Commit` |
 
 ## Closed value domains
 
 Every enumeration in the contract is declared as a closed `values:` list on its property —
-`authorKind`, both `status`es, `subjectKind`, `kind`, `verdict`, the file change's `status`, the
-build's `status` and `trigger`. The text-to-Cypher generator is then told to use one of them
+`authorKind`, both `status`es, `subjectKind`, `kind`, `verdict`, the file change's `status` and
+`kind`, the language table's `unit`, the build's `status` and `trigger`. The text-to-Cypher generator is then told to use one of them
 EXACTLY, and the host refuses a generated query that compares the property with any other
 literal, so a question about "merged" change requests cannot be answered with
 `status = 'MERGED'` or `'ChangeRequest'` where `'change-request'` was meant. The properties
@@ -104,11 +107,20 @@ A realm cannot yet declare that it needs another realm (embabel/me#495, #1168). 
 install this realm first. A child whose parent is not installed is a type with a parent the
 world has never heard of.
 
+## Not yet here, on purpose
+
+GitLab and Bitbucket children are expected; nothing in the contract names a forge. Jira carries no
+diff, so a Jira child declares no `FileChange` and no `RepositoryLanguages`. Two engine gaps that a
+child will meet are filed: a query written against a parent label does not yet mint the Person
+spine that `authorPersonEmail` keys (embabel/me#3621), and a Person so minted is read through the
+user's contact edge rather than a bare `(p:Person)` (embabel/me#3624).
+
 ## Children
 
 - [realm-github](https://github.com/embabel-worlds/realm-github) — `GitHubIssue` is an `Issue`,
   `GitHubPullRequest` a `ChangeRequest`, `GitHubComment` a `Comment`, `GitHubReview` a `Review`,
-  `GitHubCommit` a `Commit` and `GitHubFileChange` a `FileChange`; its `views/vocabulary.yml`
-  answers the authorship questions above.
+  `GitHubCommit` a `Commit`, `GitHubFileChange` a `FileChange` and `GitHubRepositoryLanguages` a
+  `RepositoryLanguages`; its `views/vocabulary.yml` answers the authorship questions above, and
+  the size (files and lines per change request by file kind), concern, people and project ones.
 - [realm-github-actions](https://github.com/embabel-worlds/realm-github-actions) — a
   `WorkflowRun` is a `Build`, and the commit a run built is a `Commit`.

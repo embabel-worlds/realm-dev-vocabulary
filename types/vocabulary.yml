@@ -54,6 +54,48 @@
 #                  zero in that case — zero is an answer.
 #   sourceUrl      a link that opens THIS record in the product it lives in. It is what lets an
 #                  app that has never heard of the product send the user back to it.
+#   kind (FileChange)
+#                  what sort of file changed, decided from the PATH alone, because the path is the
+#                  one thing every forge's diff carries. Exactly one of source, test, docs, build,
+#                  config, data, other, by the FIRST rule that matches, in this order:
+#                    test     a path through a test directory (/test/, /tests/, /__tests__/, /spec/,
+#                             /it/, /testing/, /testdata/, or one of those at the root), or a test
+#                             file name: a CamelCase suffix matched as written (FooTest.kt, FooTests.java,
+#                             FooSpec.scala, FooTest.cs, FooTests.swift), a lower-case infix (.test.ts,
+#                             .spec.js and their siblings), _test.go, _test.py, _spec.rb, test_*.py
+#                    docs     .md .mdx .adoc .asciidoc .rst .txt; anything under docs/ or doc/; LICENSE,
+#                             NOTICE, CHANGELOG, CONTRIBUTING, CODE_OF_CONDUCT, AUTHORS, SECURITY, CODEOWNERS,
+#                             README*
+#                    build    build and dependency manifests, lockfiles, wrappers and CI: pom.xml, *.gradle,
+#                             *.gradle.kts, gradle.properties, mvnw, gradlew, package.json and its lockfiles,
+#                             tsconfig*, pyproject.toml, setup.py, requirements*, go.mod, Cargo.toml, Gemfile,
+#                             *.csproj, *.sln, Makefile, CMakeLists.txt, Dockerfile*, docker-compose*,
+#                             Jenkinsfile, flake.nix, *.lock, *.nix, .gitlab-ci.yml, bitbucket-pipelines.yml,
+#                             and anything under .github/, .gitlab/, .circleci/, .buildkite/, .mvn/, gradle/
+#                    source   a code extension: kt kts java scala groovy clj ts tsx js jsx mjs cjs vue svelte py
+#                             go rs rb php cs fs swift m c cc cpp h hpp sh bash ps1 sql cypher html css scss
+#                             less dart lua pl r jl ex exs erl hs ml elm proto graphql tf hcl wasm ipynb, and
+#                             the template languages (jinja, ftl, mustache, hbs, ejs, jsp)
+#                    data     csv tsv parquet avro orc jsonl ndjson xlsx sqlite arrow
+#                    config   yml yaml json xml properties toml ini cfg conf env, and any dot-file
+#                    other    everything else: images, binaries, archives
+#                  Test comes first so a test's resources and fixtures are test, not config; build
+#                  before config so a workflow YAML is build; the CamelCase test suffixes are matched
+#                  case-sensitively so `latest.kt` is source. The rule is deliberately a list, not a
+#                  judgment: two children given the same path MUST answer the same kind, which is what
+#                  lets a view sum test lines across forges. A child extends the lists only by
+#                  changing them here.
+#   authorEmail (Commit)
+#                  the author's email as git recorded it — the one author key every forge carries, and
+#                  the only one that means the same thing on each of them (a login is per forge).
+#   authorPersonEmail (Commit)
+#                  the value that joins the commit to the world's canonical Person: `authorEmail`,
+#                  lower case, when the author is a PERSON (human or assisted, or an author the forge
+#                  could not resolve to an account, who is still a person) at a real mailbox; EMPTY for
+#                  a bot, an agent, or a forge no-reply address (users.noreply.github.com and the like),
+#                  so that no Person is ever minted for Dependabot or for a key nobody else can hold.
+#                  It carries `hub: Person`, which is what makes a commit reach whatever else the world
+#                  knows about its author — the CRM contact, the helpdesk agent, the employee.
 #
 # RECORDS, NOT IDENTITIES. Every type here is a parent type: a record a product holds, and two
 # products' records are two records. A parent has no identity of its own, because only the
@@ -77,6 +119,18 @@
     defaultBranch: "The branch a change request is merged into by default."
     visibility: "public, private or internal."
     sourceUrl: "Opens the repository on its forge."
+
+- name: RepositoryLanguages
+  userAnchor: false
+  description: >-
+    What a repository is written in, as its forge counts it: the whole language table of one
+    repository in one record, because that is how every forge serves it (GitHub as bytes per
+    language, GitLab as percentages, Bitbucket as a single language). The answer to "what is this
+    project" starts here, before any file is read.
+  properties:
+    repositoryKey: "The repository, lower case."
+    languages: { cardinality: LIST, description: "`<Language>:<amount>` entries, the language as the forge names it (Kotlin, TypeScript, C#) and the amount in `unit`. A view UNWINDs and splits them; shares are computed from the amounts when the unit is bytes." }
+    unit: { type: string, description: "What the amounts are: bytes of source, percent of the repository, or none where the forge names a single language with no amount.", values: [bytes, percent, none] }
 
 - name: Issue
   userAnchor: false
@@ -201,7 +255,13 @@
     title: "The first line of the message."
     message: "The whole message, trailers included."
     authorLogin: "The forge login of the author, where the forge resolved one. Empty when it could not."
-    authorName: "The author's name as the commit records it."
+    authorName:
+      metadata: { canonical: name }
+      description: "The author's name as the commit records it. Marked canonical so the Person that authorPersonEmail mints is named after it, not after its address."
+    authorEmail: "The author's email as git recorded it. The one author key every forge carries; see the contract."
+    authorPersonEmail:
+      hub: Person
+      description: "authorEmail, lower case, when the author is a person at a real mailbox; empty for a bot, an agent or a forge no-reply address. Keys the world's canonical Person, so a commit reaches everything else the world knows about its author. See the contract."
     authorKind: { type: string, description: "human, bot, agent, assisted or unknown — see the contract. `assisted` is the common case for agent-written code committed under a person's name: the Co-Authored-By trailer is what says so.", values: [human, bot, agent, assisted, unknown] }
     coAuthors: { cardinality: LIST, description: "Co-Authored-By trailers, as written: `Name <email>`. Empty when none." }
     committerLogin: "The forge login of the committer, where it differs from the author and the forge resolved it (a web merge, a rebase by someone else). Empty otherwise."
@@ -230,6 +290,7 @@
     path: "The file's path after the change, from the repository root."
     previousPath: "The path before a rename or copy; empty otherwise."
     status: { type: string, description: "added, modified, removed, renamed or copied.", values: [added, modified, removed, renamed, copied] }
+    kind: { type: string, description: "source, test, docs, build, config, data or other — what sort of file this is, decided from its path by the rule in the contract, identically on every forge. What lets 'how much of this change is tests' and 'lines of documentation shipped last month' be a GROUP BY.", values: [source, test, docs, build, config, data, other] }
     additions: { type: int, description: "Lines added in this file." }
     deletions: { type: int, description: "Lines deleted in this file." }
     changedLines: { cardinality: LIST, description: "Line ranges in the file AFTER the change, as `from-to` text, one per hunk — what a declaration's extent is intersected with to say which method changed. Empty when the source gave no patch." }
