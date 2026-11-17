@@ -364,3 +364,33 @@
     branches: { type: int, description: "Branches on the line. Empty when it has none or they are not counted." }
     coveredBranches: { type: int, description: "Of those, branches a test took." }
     tool: "Where the figure came from."
+
+# ---------------------------------------------------------------------------------------------
+# Findings. A static analyser (Sonar, CodeQL, SpotBugs, detekt) or a scanner (Dependabot) says, of
+# code at one commit, "this line has a problem of this kind". A realm over one of them makes its
+# type a child of Finding, and "do the lines agents helped write attract more findings" never
+# learns which analyser answered.
+#
+# THE CONTRACT. `path` is from the repository root; `line` is at the commit the analyser read, and
+# is empty for a finding about a whole file. `kind` and `severity` are exactly the words listed:
+# a source with other words folds them in and keeps its own in a property of the child's.
+
+- name: Finding
+  userAnchor: false
+  description: >-
+    One problem an analyser reports in code at one commit: where, what kind, how serious, and
+    the rule that raised it. Open findings only, unless a child says otherwise.
+  properties:
+    path: "The file's path from the repository root."
+    line: { type: int, description: "The line the finding starts on, from 1. Empty for a finding about the whole file." }
+    endLine: { type: int, description: "The line it ends on; equal to `line` for one line." }
+    kind: { type: string, description: "bug, vulnerability, smell or hotspot (security-sensitive code to review).", values: [bug, vulnerability, smell, hotspot] }
+    severity: { type: string, description: "critical, high, medium, low or info.", values: [critical, high, medium, low, info] }
+    rule: "The analyser's rule, as it names it: `java:S3776`."
+    message: "What the analyser says about this place."
+    status: "open, confirmed or accepted, as the source records it, lower case."
+    createdAt: "When the analyser first reported it."
+    effortMinutes: { type: int, description: "The analyser's estimate of the time to fix it. Empty where it gives none." }
+    tags: { cardinality: LIST, description: "The rule's tags." }
+    tool: "Where it came from: sonar, codeql, spotbugs."
+    sourceUrl: "Opens this finding in the tool."
