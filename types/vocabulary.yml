@@ -341,3 +341,77 @@
     startedAt: "When it began executing, ISO-8601 date-time in UTC (2026-11-05T09:30:00Z); empty while queued."
     finishedAt: "When it ended, ISO-8601 date-time in UTC (2026-11-05T09:30:00Z); empty until completed."
     sourceUrl: "Opens this build in its CI system."
+
+# ---------------------------------------------------------------------------------------------
+# Test coverage. A coverage tool (JaCoCo, Istanbul, coverage.py) or a service that keeps its
+# reports (Sonar, Codecov) says, of code at ONE commit, which lines can run and which the tests
+# ran. A realm over one of them makes its types children of these two, and a view that asks "is
+# the code agents wrote tested" never learns which tool answered.
+#
+# THE CONTRACT. `path` is from the repository root, as git has it, so it joins to a FileChange, a
+# blame and a declaration. Line numbers are those of the commit the report was made at: a child
+# says which commit that is, and a view must read the code at the same one. Percentages are 0 to
+# 100. A line with nothing to run (a comment, a brace) is `coverable: false`, never "uncovered".
+# Coverage is of production code: a test file has none, which is not the same as zero.
+
+- name: FileCoverage
+  userAnchor: false
+  description: >-
+    How much of one source file the tests run, at one commit: the lines that can run, the lines
+    no test ran, and the same for branches where the tool counts them.
+  properties:
+    path: "The file's path from the repository root."
+    lineCoverage: { type: double, description: "Percentage of coverable lines the tests ran, 0 to 100." }
+    branchCoverage: { type: double, description: "Percentage of branches the tests took, 0 to 100. Empty where the tool does not count branches or the file has none." }
+    linesToCover: { type: int, description: "Lines that can run." }
+    uncoveredLines: { type: int, description: "Of those, lines no test ran." }
+    branchesToCover: { type: int, description: "Branches that can be taken. Empty where not counted." }
+    uncoveredBranches: { type: int, description: "Of those, branches no test took." }
+    tool: "Where the figure came from: sonar, jacoco, codecov, istanbul."
+    sourceUrl: "Opens this file's coverage in the tool."
+
+- name: LineCoverage
+  userAnchor: false
+  description: >-
+    One line of one source file, at one commit: whether it can run at all, and whether a test ran
+    it. What a method's extent, or a blame range, is intersected with to say how much of a method,
+    or of one author's lines, is tested.
+  properties:
+    path: "The file's path from the repository root."
+    line: { type: int, description: "The line, from 1, at the commit the report was made at." }
+    coverable: { type: boolean, description: "True when the line is code that can run." }
+    covered: { type: boolean, description: "True when a test ran it. False on a line that is not coverable." }
+    hits: { type: int, description: "How many times tests ran it, where the tool counts. Empty when not coverable." }
+    branches: { type: int, description: "Branches on the line. Empty when it has none or they are not counted." }
+    coveredBranches: { type: int, description: "Of those, branches a test took." }
+    tool: "Where the figure came from."
+
+# ---------------------------------------------------------------------------------------------
+# Findings. A static analyser (Sonar, CodeQL, SpotBugs, detekt) or a scanner (Dependabot) says, of
+# code at one commit, "this line has a problem of this kind". A realm over one of them makes its
+# type a child of Finding, and "do the lines agents helped write attract more findings" never
+# learns which analyser answered.
+#
+# THE CONTRACT. `path` is from the repository root; `line` is at the commit the analyser read, and
+# is empty for a finding about a whole file. `kind` and `severity` are exactly the words listed:
+# a source with other words folds them in and keeps its own in a property of the child's.
+
+- name: Finding
+  userAnchor: false
+  description: >-
+    One problem an analyser reports in code at one commit: where, what kind, how serious, and
+    the rule that raised it. Open findings only, unless a child says otherwise.
+  properties:
+    path: "The file's path from the repository root."
+    line: { type: int, description: "The line the finding starts on, from 1. Empty for a finding about the whole file." }
+    endLine: { type: int, description: "The line it ends on; equal to `line` for one line." }
+    kind: { type: string, description: "bug, vulnerability, smell or hotspot (security-sensitive code to review).", values: [bug, vulnerability, smell, hotspot] }
+    severity: { type: string, description: "critical, high, medium, low or info.", values: [critical, high, medium, low, info] }
+    rule: "The analyser's rule, as it names it: `java:S3776`."
+    message: "What the analyser says about this place."
+    status: "open, confirmed or accepted, as the source records it, lower case."
+    createdAt: "When the analyser first reported it (not when the line was written), ISO-8601 date-time in UTC; the offset spelling is the analyser's (Z or +0000)."
+    effortMinutes: { type: int, description: "The analyser's estimate of the time to fix it, in minutes. Empty where it gives none." }
+    tags: { cardinality: LIST, description: "The rule's tags." }
+    tool: "Where it came from: sonar, codeql, spotbugs."
+    sourceUrl: "Opens this finding in the tool."
