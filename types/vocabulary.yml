@@ -410,8 +410,8 @@
     rule: "The analyser's rule, as it names it: `java:S3776`."
     message: "What the analyser says about this place."
     status: "open, confirmed or accepted, as the source records it, lower case."
-    createdAt: "When the analyser first reported it."
-    effortMinutes: { type: int, description: "The analyser's estimate of the time to fix it. Empty where it gives none." }
+    createdAt: "When the analyser first reported it (not when the line was written), ISO-8601 date-time in UTC; the offset spelling is the analyser's (Z or +0000)."
+    effortMinutes: { type: int, description: "The analyser's estimate of the time to fix it, in minutes. Empty where it gives none." }
     tags: { cardinality: LIST, description: "The rule's tags." }
     tool: "Where it came from: sonar, codeql, spotbugs."
     sourceUrl: "Opens this finding in the tool."
